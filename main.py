@@ -7,7 +7,7 @@ client.start()
 
 participants = client.get_participants('pohod_irk')
 s = str(participants)
-print(participants.)
+print(participants)
 
 User(
     id=418704402,
