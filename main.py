@@ -1,8 +1,9 @@
-from telethon import TelegramClient
+from telethon.sync import TelegramClient
 from API import api_id, api_hash
-from functions import data_for_chat_parsing
 
+# test_url = 'https://t.me/pohod_irk'
+client = TelegramClient('name', api_id, api_hash)
+client.start()
 
-arr_chats, user_API = data_for_chat_parsing()
-
-print(f'{user_API=}\n{arr_chats=}')
+participants = client.get_participants('pohod_irk')
+s = str(participants)
