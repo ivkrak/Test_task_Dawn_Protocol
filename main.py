@@ -1,12 +1,14 @@
 import datetime
 from telethon.sync import TelegramClient
+from telethon.tl.types import UserStatusOnline
+
 from crypt import api_keys
 import pandas as pd
 # test_url = 'https://t.me/pohod_irk'
 api_id, api_hash = api_keys()
 client = TelegramClient('name', api_id, api_hash)
 client.start()
-participants = client.get_participants('pohod_irk')
+participants = client.get_participants('https://t.me/lobbyirk')
 
 
 def TotalList_to_json(TotalList):
@@ -24,10 +26,11 @@ def TotalList_to_json(TotalList):
         s = s.replace(":", "':")
         s = s.replace("UserProfilePhoto(", "{'")
         s = s.replace("UserStatusOffline(", "{'")
+        s = s.replace("UserStatusOnline(", "{'")
         s = s.replace("utc))", "utc)}")
         s = s.replace("')", "'")
         s = s.replace("'phone': ", "'phone': '")
-        s = s[0:-1]+'}'
+        s = s[0:-1]+ "'''" + '}'
         s = s.replace("'0", "0")
         s = s.replace("'1", "1")
         s = s.replace("'2", "2")
@@ -40,17 +43,49 @@ def TotalList_to_json(TotalList):
         s = s.replace("'9", "9")
         s = s.replace("'tzinfo':", "tzinfo=")
         s = s.replace("'None", "None")
+        s = s.replace("'photo': ", "'photo': '''" )
+        try:
+            s = s.replace("expires'", "'expires'")
+        except NameError:
+            pass
         try:
             s = s.replace("UserStatusRecently()", "None")
         except NameError:
             pass
         with open('Data/inf.txt', encoding='utf-8', mode="w") as f:
-            f.write(s)
             try:
+                f.seek(0)
+                f.write(s)
                 dct = eval(s)
             except SyntaxError:
-                s += '}'
-                dct = eval(s)
+                try:
+                    f.seek(0)
+                    f.write(s)
+                    s = s + '}'
+                    dct = eval(s)
+                except SyntaxError:
+                    try:
+                        f.seek(0)
+                        f.write(s)
+                        s = s + '}'
+                        dct = eval(s)
+                    except SyntaxError:
+                        try:
+                            f.seek(0)
+                            f.write(s)
+                            s = s +'}'
+                            dct = eval(s)
+                        except SyntaxError:
+                            dct = {
+                                'id': None,
+                                'username': None,
+                                'first_name': None,
+                                'last_name': None,
+                                'phone': None,
+                                'premium': None
+                            }
+            f.seek(0)
+            f.write(s)
             new_dct = {
                 'UserID': dct['id'],
                 'User_name': dct['username'],
@@ -63,7 +98,7 @@ def TotalList_to_json(TotalList):
             df = df.append(new_dct, ignore_index=True)
             df.reset_index(drop=True, inplace=True)
             df.to_csv('Data/df.csv')
-            print(df)
+            df.to_json('Data/df.json')
     return df
 
 dct_1904930429= {
@@ -110,3 +145,4 @@ dct_1904930429= {
 
 print(TotalList_to_json(participants))
 
+dct_1904930429= {}
