@@ -1,4 +1,5 @@
 def data_for_chat_parsing():
+    # region
     """
     Функция для приёма:
 
@@ -28,4 +29,5 @@ def data_for_chat_parsing():
                     arr_chats.append(s)
         case 0:
             arr_chats = input('Напишите сюда название чатов через ;  (точку с запятой) - ').replace(' ', '').split(';')
+    # endregion
     return arr_chats, api_id, api_hash
