@@ -1,10 +1,14 @@
+import time
+from functions import data_for_chat_parsing
 import pandas as pd
 from telethon.sync import TelegramClient
 import warnings
 from crypt import api_keys
+from telethon.tl.functions.channels import JoinChannelRequest
 
-chat_urls = ['https://t.me/pohod_irk', 'https://t.me/lobbyirk', 'https://t.me/pythonstepikchat',
-             'http://t.me/+fqNb78zlQY81NGUy']
+
+chat_urls, api_id, api_hash = data_for_chat_parsing()
+chat_urls = ['https://t.me/pohod_irk', 'https://t.me/lobbyirk', 'https://t.me/pythonstepikchat']
 api_id, api_hash = api_keys()
 client = TelegramClient('ivkrak', api_id, api_hash)
 client.start()
@@ -17,7 +21,9 @@ def date_about_chat_users(url_list):
         print(f'Собираю информацию из чата: {url}')
 
         try:
+            client(JoinChannelRequest(url))
             participants = client.get_participants(url)
+            time.sleep(5)
             for user in participants:
                 new_dct = {
                     "User ID": user.id,

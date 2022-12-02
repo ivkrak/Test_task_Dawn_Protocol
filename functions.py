@@ -7,7 +7,7 @@ def data_for_chat_parsing():
 
     **списка ссылок на чаты**
 
-    :return: Список ссылок на чаты, user_API
+    :return: Список ссылок на чаты, api_id, api_hash
     """
     arr_chats = []
     api_id = input('Напишите сюда свой api_id - ')
