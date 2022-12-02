@@ -8,7 +8,6 @@ from telethon.tl.functions.channels import JoinChannelRequest
 
 
 chat_urls, api_id, api_hash = data_for_chat_parsing()
-chat_urls = ['https://t.me/pohod_irk', 'https://t.me/lobbyirk', 'https://t.me/pythonstepikchat']
 api_id, api_hash = api_keys()
 client = TelegramClient('ivkrak', api_id, api_hash)
 client.start()
