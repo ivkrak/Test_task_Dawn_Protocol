@@ -7,6 +7,7 @@ from telethon.tl.functions.users import GetFullUserRequest
 import time
 import math
 
+from tqdm import tqdm
 
 def filter_words(words_list, text):
     """
@@ -42,7 +43,7 @@ def date_about_chat_users(url_list):
         try:
             client(JoinChannelRequest(url))
             participants = client.get_participants(url)
-            for i, user in enumerate(participants):
+            for user in tqdm(participants):
                 num_of_users += 1
                 if not (user.username is None):
                     bio = client(GetFullUserRequest(user)).full_user.about
