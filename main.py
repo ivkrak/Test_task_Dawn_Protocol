@@ -5,8 +5,6 @@ from telethon.tl.functions.channels import JoinChannelRequest
 import socks
 from telethon.tl.functions.users import GetFullUserRequest
 import time
-import math
-
 from tqdm import tqdm
 
 def filter_words(words_list, text):
@@ -41,7 +39,9 @@ def date_about_chat_users(url_list):
         print(f'Собираю информацию из чата: {url}')
 
         try:
-            client(JoinChannelRequest(url))
+            try:
+                client(JoinChannelRequest(url))
+            except Exception as ex: print(ex)
             participants = client.get_participants(url)
             for user in tqdm(participants):
                 num_of_users += 1
@@ -57,42 +57,23 @@ def date_about_chat_users(url_list):
                             "Premium": user.premium,
                             "About user": bio
                         }
-                        if filter_words(words_list=['Python', 'Developer'], text=str(new_dct) + str(bio)):
-                            print('----Пользователь прошёл фильтр и был добавлен в таблицу----')
+                        if filter_words(words_list=['smm', 'смм'], text=str(new_dct) + str(bio)):
+                            # print('----Пользователь прошёл фильтр и был добавлен в таблицу----')
                             df = df.append(new_dct, ignore_index=True)
                             df.reset_index(drop=True, inplace=True)
-                    else:
-                        new_dct = {
-                            "User ID": user.id,
-                            "User name": user.username,
-                            "First name": user.first_name,
-                            "Last name": user.last_name,
-                            "User phone number": user.phone,
-                            "Premium": user.premium,
-                            "About user": bio
-                        }
-                        df2 = df2.append(new_dct, ignore_index=True)
-                        df2.reset_index(drop=True, inplace=True)
         except Exception as ex:
             print(f'{ex}\nОШИБКА С ЧАТОМ: {url}')
     df.rename(columns={"": "index"})
-    df.to_csv('Data/Users_info.csv')
+    df2.rename(columns={"": "index"})
+    df.to_csv('Data/Filtered_Users_info.csv')
+    df2.to_csv('Data/All_Users_info.csv')
     print(f'Количество проскандированных пользователей: {num_of_users}')
 
 
 if __name__ == '__main__':
     t = time.time()
     date_about_chat_users([
-        'https://t.me/smmchat',
-        'https://t.me/smmpub_chat',
-        'https://t.me/smm_telegram_chat',
-        'https://t.me/chat_pro_smm',
-        'https://t.me/smmchat',
-        'https://t.me/chat_skam',
-        'https://t.me/smmruschats',
-        'https://t.me/chatus13',
-        'https://t.me/smm_chat',
-        'https://t.me/smm_chat1',
-        'https://t.me/smm_chat2'
+
     ])
     print("---%s seconds---" % (time.time() - t))
+
