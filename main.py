@@ -74,7 +74,9 @@ def date_about_chat_users(url_list):
 
 if __name__ == '__main__':
     t = datetime.now()
+
     date_about_chat_users([
     'https://t.me/chat3',
     ])
+
     print('Время работы программы: ', datetime.now() - t)
