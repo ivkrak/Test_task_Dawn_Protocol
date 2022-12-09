@@ -2,12 +2,11 @@ import pandas as pd
 from telethon.sync import TelegramClient
 import warnings
 from telethon.tl.functions.channels import JoinChannelRequest
-import socks
-from telethon.tl.functions.users import GetFullUserRequest
 from datetime import datetime
 from tqdm import tqdm
 import requests
-from bs4 import BeautifulSoup
+
+
 def filter_words(words_list, text):
     """
     Возвращает False, если в text нет ни одного слова из words_list, в остальных случаях возвращает True
@@ -26,15 +25,14 @@ def get_bio(user_login):
     """
     Функция для выполнения запросов (about user)
     :param user_login: имя пользователя / username
-    :return: информация о пользователе типа str
+    :return: информация о пользователе типа str, в случае ошибки, выдаст None и описание ошибки
     """
-    try:
-        r = requests.get(f'https://t.me/{user_login}')
-        arr = list(r.text.split('\n'))
-        s = str((arr[27])[42::])
+    r = requests.get(f'https://t.me/{user_login}')
+    arr = list(r.text.split('\n'))
+    s = str((arr[27])[42::])
 
-        return s if 'You can contact' not in s else None
-    except: return None
+    return s if 'You can contact' not in s else None
+
 
 client = TelegramClient('79263782950', api_id='2040', api_hash='b18441a1ff607e10a989891a5462e627',
                         proxy=(3, "gate.dc.smartproxy.com", 20000, True, "user-Port50", "Ghd7lKaQj077"))
@@ -51,14 +49,11 @@ def date_about_chat_users(url_list):
             try:
                 client(JoinChannelRequest(url))
             except Exception as ex: print(ex)
-            participants = client.get_participants(url)
-            for user in tqdm(participants):
-                print(user)
-                was_online = user.status.was_online
+            for user in tqdm(client.get_participants(url)):
+                # wasOnline = user.status.was_online ТУТ НУЖНО ДОПИЛИТЬ
 
-                if user.username is not None:
-                    bio = get_bio(user.username)
-                    if user.username is not None and bio is not None:
+                 if user.username is not None:
+                    if user.username is not None and (bio := get_bio(user.username)) is not None:
                         new_dct = {
                             "User ID": user.id,
                             "User name": user.username,
@@ -80,35 +75,6 @@ def date_about_chat_users(url_list):
 if __name__ == '__main__':
     t = datetime.now()
     date_about_chat_users([
-    'https://t.me/chat3'
+    'https://t.me/chat3',
     ])
     print('Время работы программы: ', datetime.now() - t)
-
-User(
-    id=5215628722,
-    is_self=False,
-    contact=False,
-    mutual_contact=False,
-    deleted=False,
-    bot=False,
-    bot_chat_history=False,
-    bot_nochats=False,
-    verified=False,
-    restricted=False,
-    min=False,
-    bot_inline_geo=False,
-    support=False,
-    scam=False,
-    apply_min_photo=True,
-    fake=False,
-    bot_attach_menu=False,
-    premium=False,
-    attach_menu_enabled=False,
-    access_hash=-4505735046168541241,
-    first_name='Ngm',
-    last_name=None,
-    username=None,
-    phone=None,
-    photo=None,
-    status=UserStatusOffline(
-        was_online=datetime.datetime(2022, 12, 7, 11, 46, 43, tzinfo=datetime.timezone.utc)), bot_info_version=None, restriction_reason=[], bot_inline_placeholder=None, lang_code=None, emoji_status=None, usernames=[])
