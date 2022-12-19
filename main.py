@@ -1,4 +1,6 @@
+import grequests
 import pandas as pd
+from numpy.distutils.fcompiler import none
 from telethon.sync import TelegramClient
 import warnings
 from telethon.tl.functions.channels import JoinChannelRequest
@@ -53,15 +55,15 @@ def filter_words(words_list, text):
     return False
 
 
-def get_bio(user_login):
+def get_bio(html_text):
     """
     Функция для выполнения запросов (about user)
     ДОПИЛИТЬ!!! Медленно работает!!!
-    :param user_login: имя пользователя / username
+    :param html_text: текст сырого запроса
     :return: информация о пользователе типа str, в случае ошибки, выдаст None и описание ошибки
     """
-    r = requests.get(f'https://t.me/{user_login}')
-    arr = list(r.text.split('\n'))
+    # грамматику
+    arr = list(html_text.split('\n'))
     s = str((arr[27])[42::])
 
     return s if 'You can contact' not in s else None
@@ -80,26 +82,48 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def date_about_chat_users(url_list):
     df = pd.DataFrame()
+    arr_user_name = []
     for url in url_list:
         print(f'Собираю информацию из чата: {url}')
 
         try:
             client(JoinChannelRequest(url)) # заходит в чат по utl
-            for user in tqdm(client.get_participants(url)): # получает список юзеров с информацией о них из чата
-                if user.username is not None:
-                    if (bio := get_bio(user.username)) is not None:
-                        new_dct = {
-                            "User ID": user.id,
-                            "User name": user.username,
-                            "First name": user.first_name,
-                            "Last name": user.last_name,
-                            "User phone number": user.phone,
-                            "Premium": user.premium,
-                            "About user": bio
-                        }
-                        if filter_words(words_list=['smm', 'смм'], text=str(new_dct.values()) + str(bio)):
-                            df = df.append(new_dct, ignore_index=True)
-                            df.reset_index(drop=True, inplace=True)
+            # for user in tqdm(users_info := client.get_participants(url)): # получает список юзеров с информацией о них из чата
+            #     if user.username is not None:
+            #         # if (bio := get_bio(user.username)) is not None:
+            #         #     new_dct = {
+            #         #         "User ID": user.id,
+            #         #         "User name": user.username,
+            #         #         "First name": user.first_name,
+            #         #         "Last name": user.last_name,
+            #         #         "User phone number": user.phone,
+            #         #         "Premium": user.premium,
+            #         #         "About user": bio
+            #         #     }
+            #         # arr_user_name.append(f'https://t.me{user.username}')
+            users_info = client.get_participants(url)
+            arr_user_name = [f'https://t.me/{user.username}' for user in users_info]
+            print(arr_user_name)
+            response = (grequests.get(bio) for bio in arr_user_name)
+            resp = grequests.map(response)
+            for i in resp:
+
+                print((list(str(i.content).split('\n'))[27]))
+            # bio = none
+            print(arr_user_name)
+            for user in users_info:
+                new_dct = {
+                        "User ID": user.id,
+                        "User name": user.username,
+                        "First name": user.first_name,
+                        "Last name": user.last_name,
+                        "User phone number": user.phone,
+                        "Premium": user.premium,
+                        "About user": none
+                    }
+                if filter_words(words_list=['smm', 'смм'], text=str(new_dct.values()) + str(bio)):
+                    df = df.append(new_dct, ignore_index=True)
+                    df.reset_index(drop=True, inplace=True)
         except Exception as ex:
             print(f'{ex}\nОШИБКА С ЧАТОМ: {url}')
     # df.rename(columns={"": "index"})
@@ -111,5 +135,5 @@ def date_about_chat_users(url_list):
 if __name__ == '__main__':
     date_about_chat_users([
     'https://t.me/smm_chat1',
-    'https://t.me/smm_chat1',
+    'https://t.me/smm_telegram_chat',
     ])
