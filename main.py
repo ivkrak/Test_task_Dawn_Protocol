@@ -1,14 +1,13 @@
 import grequests
 import pandas as pd
-from numpy.distutils.fcompiler import none
 from telethon.sync import TelegramClient
 import warnings
 from telethon.tl.functions.channels import JoinChannelRequest
-from tqdm import tqdm
-import requests
 import ujson as json
 import codecs
 import os
+from bs4 import BeautifulSoup
+from datetime import datetime
 
 class JsonGetInfo:
     @staticmethod
@@ -30,8 +29,8 @@ def file_exist(fname) -> bool:
     return os.path.exists(fname)
 
 
-def get_session(session):
-    if file_exist(f'sessions//{session}.json'):
+def get_session(session_name: str) -> str:
+    if file_exist(f'sessions//{session_name}.json'):
         try:
             json_path = 'sessions//{}.json'.format(session)
             return JsonGetInfo.read_json(json_path)
@@ -63,77 +62,71 @@ def get_bio(html_text):
     :return: информация о пользователе типа str, в случае ошибки, выдаст None и описание ошибки
     """
     # грамматику
-    arr = list(html_text.split('\n'))
-    s = str((arr[27])[42::])
+    soup = BeautifulSoup(html_text, 'lxml')
+    bio = soup.find('div', class_ = 'tgme_page_description')
 
-    return s if 'You can contact' not in s else None
-
+    try:
+        if 'If you have Telegram' in bio.text.strip():
+            return ''
+        else:
+            return bio.text.strip()
+    except: return ''
 
 
 session = get_session('79263782950')
-
-client = TelegramClient(session=f"sessions/{str(session['session_file'])}", api_id=session['app_id'], api_hash=session['app_hash'],
-                         proxy=session['proxy'])
-
-
+client = TelegramClient(session=f"sessions/{str(session['session_file'])}", api_id=session['app_id'],
+                        api_hash=session['app_hash'], proxy=session['proxy'])
 client.start()
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def date_about_chat_users(url_list):
+def main(*, url_list, filter_words_list):
+    """
+    Функция для сбора аудитории из чатов и фильтрации bio
+    :param url_list: list
+    :param filter_words_list: list / None
+    :return: exel table, csv table
+    """
+
     df = pd.DataFrame()
-    arr_user_name = []
     for url in url_list:
         print(f'Собираю информацию из чата: {url}')
-
         try:
             client(JoinChannelRequest(url)) # заходит в чат по utl
-            # for user in tqdm(users_info := client.get_participants(url)): # получает список юзеров с информацией о них из чата
-            #     if user.username is not None:
-            #         # if (bio := get_bio(user.username)) is not None:
-            #         #     new_dct = {
-            #         #         "User ID": user.id,
-            #         #         "User name": user.username,
-            #         #         "First name": user.first_name,
-            #         #         "Last name": user.last_name,
-            #         #         "User phone number": user.phone,
-            #         #         "Premium": user.premium,
-            #         #         "About user": bio
-            #         #     }
-            #         # arr_user_name.append(f'https://t.me{user.username}')
+            print('Идёт сбор информации об участниках чата')
             users_info = client.get_participants(url)
             arr_user_name = [f'https://t.me/{user.username}' for user in users_info]
-            print(arr_user_name)
+            print('Собираю дополнительные данные')
             response = (grequests.get(bio) for bio in arr_user_name)
             resp = grequests.map(response)
+            arr_bio = []
             for i in resp:
-
-                print((list(str(i.content).split('\n'))[27]))
-            # bio = none
-            print(arr_user_name)
-            for user in users_info:
-                new_dct = {
+                try:
+                    arr_bio.append(get_bio(i.text))
+                except: arr_bio.append('')
+            for i, user in enumerate(users_info):
+                if user.username is not None:
+                    new_dct = {
                         "User ID": user.id,
                         "User name": user.username,
                         "First name": user.first_name,
                         "Last name": user.last_name,
                         "User phone number": user.phone,
                         "Premium": user.premium,
-                        "About user": none
+                        "About user": arr_bio[i]
                     }
-                if filter_words(words_list=['smm', 'смм'], text=str(new_dct.values()) + str(bio)):
-                    df = df.append(new_dct, ignore_index=True)
-                    df.reset_index(drop=True, inplace=True)
+                    filter = False if (filter_words_list == [] or None) else True
+                    if filter or filter_words(words_list=filter_words_list, text=str(new_dct.values()) + str(arr_bio[i])):
+                        df = df.append(new_dct, ignore_index=True)
+                        df.reset_index(drop=True, inplace=True)
         except Exception as ex:
             print(f'{ex}\nОШИБКА С ЧАТОМ: {url}')
-    # df.rename(columns={"": "index"})
+    df.rename(columns={"": "index"})
     df.to_csv('Data/Filtered_Users_info.csv', encoding="utf-16")
-    df.to_html('Data/Filtered_Users_info.html', encoding="utf-16")
     df.to_excel('Data/Filtered_Users_info.xlsx', encoding="utf-16")
 
 
 if __name__ == '__main__':
-    date_about_chat_users([
-    'https://t.me/smm_chat1',
-    'https://t.me/smm_telegram_chat',
-    ])
+    t = datetime.now()
+    main(url_list=['https://t.me/smm_chat1', 'https://t.me/pythonstepikchat'], filter_words_list=['python'])
+    print('Время работы программы: ', datetime.now() - t)
