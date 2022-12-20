@@ -29,8 +29,8 @@ def file_exist(fname) -> bool:
     return os.path.exists(fname)
 
 
-def get_session(session_name: str) -> str:
-    if file_exist(f'sessions//{session_name}.json'):
+def get_session(session: str) -> str:
+    if file_exist(f'sessions//{session}.json'):
         try:
             json_path = 'sessions//{}.json'.format(session)
             return JsonGetInfo.read_json(json_path)
@@ -108,15 +108,15 @@ def main(*, url_list, filter_words_list):
                 if user.username is not None:
                     new_dct = {
                         "User ID": user.id,
-                        "User name": user.username,
+                        "User name": f'@{user.username}',
                         "First name": user.first_name,
                         "Last name": user.last_name,
                         "User phone number": user.phone,
                         "Premium": user.premium,
                         "About user": arr_bio[i]
                     }
-                    filter = False if (filter_words_list == [] or None) else True
-                    if filter or filter_words(words_list=filter_words_list, text=str(new_dct.values()) + str(arr_bio[i])):
+                    filter = True if (filter_words_list == [] or filter_words_list is None) else False
+                    if filter or (filter_words(words_list=filter_words_list, text=str(new_dct.values()) + str(arr_bio[i]))):
                         df = df.append(new_dct, ignore_index=True)
                         df.reset_index(drop=True, inplace=True)
         except Exception as ex:
@@ -124,9 +124,19 @@ def main(*, url_list, filter_words_list):
     df.rename(columns={"": "index"})
     df.to_csv('Data/Filtered_Users_info.csv', encoding="utf-16")
     df.to_excel('Data/Filtered_Users_info.xlsx', encoding="utf-16")
-
+    with open('Data/Filtered_Users_info.txt', 'w', encoding='utf-16') as f:
+        for item in list(df['User name'].values):
+            f.write(f'{item}\n')
 
 if __name__ == '__main__':
     t = datetime.now()
-    main(url_list=['https://t.me/smm_chat1', 'https://t.me/pythonstepikchat'], filter_words_list=['python'])
+    main(
+        url_list=[
+            'https://t.me/shevtsovchat'
+            'https://t.me/smm_chat1',
+            'https://t.me/pohod_irk',
+        ],
+        filter_words_list=None
+    )
+
     print('Время работы программы: ', datetime.now() - t)
