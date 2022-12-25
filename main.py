@@ -1,10 +1,43 @@
+import grequests
 import pandas as pd
 from telethon.sync import TelegramClient
 import warnings
 from telethon.tl.functions.channels import JoinChannelRequest
+import ujson as json
+import codecs
+import os
+from bs4 import BeautifulSoup
 from datetime import datetime
-from tqdm import tqdm
-import requests
+
+class JsonGetInfo:
+    @staticmethod
+    def read_json(json_path: str) -> str:
+        with codecs.open(json_path, "r", "utf-8") as F:
+            return json.load(F)
+
+    @staticmethod
+    def write_to_json(json_path: str, data) -> None:
+        if not isinstance(data, str):
+            data = json.dumps(data)
+        with codecs.open(json_path, "w", "utf-8") as temp:
+            temp.write(data)
+
+
+def file_exist(fname) -> bool:
+    if fname is None:
+        return False
+    return os.path.exists(fname)
+
+
+def get_session(session: str) -> str:
+    if file_exist(f'sessions//{session}.json'):
+        try:
+            json_path = 'sessions//{}.json'.format(session)
+            return JsonGetInfo.read_json(json_path)
+        except Exception as ex:
+            print(f'Ошибка с сессией {ex}')
+            return None
+
 
 
 def filter_words(words_list, text):
@@ -21,62 +54,87 @@ def filter_words(words_list, text):
     return False
 
 
-def get_bio(user_login):
+def get_bio(html_text):
     """
     Функция для выполнения запросов (about user)
-    :param user_login: имя пользователя / username
+    ДОПИЛИТЬ!!! Медленно работает!!!
+    :param html_text: текст сырого запроса
     :return: информация о пользователе типа str, в случае ошибки, выдаст None и описание ошибки
     """
-    r = requests.get(f'https://t.me/{user_login}')
-    arr = list(r.text.split('\n'))
-    s = str((arr[27])[42::])
+    # грамматику
+    soup = BeautifulSoup(html_text, 'lxml')
+    bio = soup.find('div', class_ = 'tgme_page_description')
 
-    return s if 'You can contact' not in s else None
+    try:
+        if 'If you have Telegram' in bio.text.strip():
+            return ''
+        else:
+            return bio.text.strip()
+    except: return ''
 
 
-client = TelegramClient('79263782950', api_id='2040', api_hash='b18441a1ff607e10a989891a5462e627',
-                        proxy=(3, "gate.dc.smartproxy.com", 20000, True, "user-Port50", "Ghd7lKaQj077"))
+session = get_session('79263782950')
+client = TelegramClient(session=f"sessions/{str(session['session_file'])}", api_id=session['app_id'],
+                        api_hash=session['app_hash'], proxy=session['proxy'])
 client.start()
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def date_about_chat_users(url_list):
+def main(*, url_list, filter_words_list):
+    """
+    Функция для сбора аудитории из чатов и фильтрации bio
+    :param url_list: list
+    :param filter_words_list: list / None
+    :return: exel table, csv table
+    """
+
     df = pd.DataFrame()
     for url in url_list:
         print(f'Собираю информацию из чата: {url}')
-
         try:
-            try:
-                client(JoinChannelRequest(url))
-            except Exception as ex: print(ex)
-            for user in tqdm(client.get_participants(url)):
-                # wasOnline = user.status.was_online ТУТ НУЖНО ДОПИЛИТЬ
-
-                 if user.username is not None:
-                    if user.username is not None and (bio := get_bio(user.username)) is not None:
-                        new_dct = {
-                            "User ID": user.id,
-                            "User name": user.username,
-                            "First name": user.first_name,
-                            "Last name": user.last_name,
-                            "User phone number": user.phone,
-                            "Premium": user.premium,
-                            "About user": bio
-                        }
-                        if True or filter_words(words_list=['smm', 'смм'], text=str(new_dct) + str(bio)):
-                            df = df.append(new_dct, ignore_index=True)
-                            df.reset_index(drop=True, inplace=True)
+            client(JoinChannelRequest(url)) # заходит в чат по utl
+            print('Идёт сбор информации об участниках чата')
+            users_info = client.get_participants(url)
+            arr_user_name = [f'https://t.me/{user.username}' for user in users_info]
+            print('Собираю дополнительные данные')
+            response = (grequests.get(bio) for bio in arr_user_name)
+            resp = grequests.map(response)
+            arr_bio = []
+            for i in resp:
+                try:
+                    arr_bio.append(get_bio(i.text))
+                except: arr_bio.append('')
+            for i, user in enumerate(users_info):
+                if user.username is not None:
+                    new_dct = {
+                        "User ID": user.id,
+                        "User name": f'@{user.username}',
+                        "First name": user.first_name,
+                        "Last name": user.last_name,
+                        "User phone number": user.phone,
+                        "Premium": user.premium,
+                        "About user": arr_bio[i]
+                    }
+                    filter = True if (filter_words_list == [] or filter_words_list is None) else False
+                    if filter or (filter_words(words_list=filter_words_list, text=str(new_dct.values()) + str(arr_bio[i]))):
+                        df = df.append(new_dct, ignore_index=True)
+                        df.reset_index(drop=True, inplace=True)
         except Exception as ex:
             print(f'{ex}\nОШИБКА С ЧАТОМ: {url}')
     df.rename(columns={"": "index"})
-    df.to_csv('Data/Filtered_Users_info.csv')
-
+    df.to_csv('Data/Filtered_Users_info.csv', encoding="utf-16")
+    df.to_excel('Data/Filtered_Users_info.xlsx', encoding="utf-16")
+    with open('Data/Filtered_Users_info.txt', 'w', encoding='utf-16') as f:
+        for item in list(df['User name'].values):
+            f.write(f'{item}\n')
 
 if __name__ == '__main__':
     t = datetime.now()
-
-    date_about_chat_users([
-    'https://t.me/chat3',
-    ])
+    main(
+        url_list=[
+            'https://t.me/smm_chat1'
+        ],
+        filter_words_list=['smm']
+    )
 
     print('Время работы программы: ', datetime.now() - t)
